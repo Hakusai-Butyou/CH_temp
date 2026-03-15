@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      dockerfile: ./docker/app/dockerfile.dev
+    ports:
+      - "3000:3000" # ホストの3000番をコンテナの3000番へ繋ぐ
+    volumes:
+      - cargo-registry:/usr/local/cargo/registry  # ダウンロード済みクレートのキャッシュ
+      - cargo-target:/app/target     
+    environment:
+      - DB_USER=${DB_USER}
+      - CLIENT_ID=${CLIENT_ID}
+      - DB_PASS=${DB_PASS}            # ビルド済みのライブラリ・バイナリのキャッシュ
+  surrealdb:
+    image: 
+      surrealdb/surrealdb:latest
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+    command:
+      - start
+      - --user
+      - ${DB_USER}
+      - --pass
+      - ${DB_PASS}
+    ports:
+      - "8000:8000"
+    volumes:
+      - surreal_data:/data
+volumes:
+  surreal_data: # ボリュームの定義
+  cargo-registry: # 外部ボリュームとして作成
+  cargo-target:

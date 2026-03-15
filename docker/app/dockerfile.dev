@@ -1,0 +1,26 @@
+FROM rust:1.94-slim
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    curl \
+    git \
+    build-essential \
+    clang\
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add wasm32-unknown-unknown
+RUN rustup toolchain install nightly
+RUN rustup default nightly
+RUN rustup target add wasm32-unknown-unknown --toolchain nightly
+RUN cargo install cargo-leptos
+
+WORKDIR /app
+
+COPY ./Cargo.toml ./Cargo.toml
+
+COPY ./.gitignore ./.gitignore
+COPY ./public ./public
+COPY ./src ./src
+
+CMD ["cargo", "leptos", "watch"]

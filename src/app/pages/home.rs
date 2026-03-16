@@ -8,6 +8,8 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         <h1>"Welcome to Leptos!"</h1>
+        <h1>"こんにちは"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
+        <a></a>
     }
 }

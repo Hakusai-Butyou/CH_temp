@@ -5,6 +5,7 @@ use leptos_router::{
     StaticSegment,
 };
 use crate::app::pages::home::HomePage;
+use crate::app::pages::not_found_page::NotFoundPage;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -14,15 +15,15 @@ pub fn App() -> impl IntoView {
     view! {
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
-        <Stylesheet id="leptos" href="/pkg/creater-hub-temp.css"/>
+        // <Stylesheet id="leptos" href="/pkg/creater-hub-temp.css"/>
 
         // sets the document title
-        <Title text="Welcome to Leptos"/>
+        // <Title text="Welcome to Leptos"/>
 
         // content for this welcome page
         <Router>
             <main>
-                <Routes fallback=|| "Page not found.".into_view()>
+                <Routes fallback=|| view! { <NotFoundPage/> }>
                     <Route path=StaticSegment("") view=HomePage/>
                 </Routes>
             </main>

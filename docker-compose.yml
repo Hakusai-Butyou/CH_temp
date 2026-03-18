@@ -10,7 +10,8 @@ services:
     environment:
       - DB_USER=${DB_USER}
       - CLIENT_ID=${CLIENT_ID}
-      - DB_PASS=${DB_PASS}            # ビルド済みのライブラリ・バイナリのキャッシュ
+      - DB_PASS=${DB_PASS}    
+      - RUST_BACKTRACE=1
   surrealdb:
     image: 
       surrealdb/surrealdb:latest

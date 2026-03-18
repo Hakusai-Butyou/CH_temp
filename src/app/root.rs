@@ -5,6 +5,7 @@ use leptos_router::{
     StaticSegment,
 };
 use crate::app::pages::home::HomePage;
+use crate::app::pages::database::DBPage;
 use crate::app::pages::not_found_page::NotFoundPage;
 
 #[component]
@@ -25,6 +26,7 @@ pub fn App() -> impl IntoView {
             <main>
                 <Routes fallback=|| view! { <NotFoundPage/> }>
                     <Route path=StaticSegment("") view=HomePage/>
+                    <Route path=StaticSegment("database") view=DBPage/>
                 </Routes>
             </main>
         </Router>

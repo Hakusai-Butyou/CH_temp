@@ -4,10 +4,13 @@
 async fn main() {
     use axum::Router;
     use leptos::logging::log;
-    use leptos::prelude::*;
+    use leptos::prelude::{provide_context, *};
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use creater_hub_temp::app::root::App;
     use creater_hub_temp::app::shell::shell;
+    use creater_hub_temp::server::db::connect_db::connect_to_db;
+    use creater_hub_temp::app::app_state::{self, AppState};
+    //use leptos_router::location::State;
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -15,14 +18,24 @@ async fn main() {
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
 
+    let db=connect_to_db().await.unwrap();
+    let app_state=AppState{leptos_options,db};
+
     let app = Router::new()
-        .leptos_routes(&leptos_options, routes, {
-            let leptos_options = leptos_options.clone();
+        .leptos_routes_with_context(&app_state, routes, 
+            {
+                let db_clone=app_state.db.clone();
+                move || {
+                    provide_context(db_clone.clone());
+                }
+            }
+            ,{
+            let leptos_options = app_state.leptos_options.clone();
             move || shell(leptos_options.clone())
         })
-        .fallback(leptos_axum::file_and_error_handler(shell))
-        .with_state(leptos_options);
-
+        .fallback(leptos_axum::file_and_error_handler::<AppState,_>(shell))
+        .with_state(app_state);
+    
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     log!("listening on http://{}", &addr);

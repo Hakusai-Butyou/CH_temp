@@ -19,11 +19,7 @@ tower-cookies = "0.11.0"
 surrealdb = "3.0.4"
 
 [features]
-hydrate = [
-    "leptos/hydrate",
-    "dep:console_error_panic_hook",
-    "dep:wasm-bindgen",
-]
+default = ["ssr"]
 ssr = [
     "dep:axum",
     "dep:tokio",
@@ -31,6 +27,11 @@ ssr = [
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
+]
+hydrate = [
+    "leptos/hydrate",
+    "dep:console_error_panic_hook",
+    "dep:wasm-bindgen",
 ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode

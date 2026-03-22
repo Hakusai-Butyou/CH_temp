@@ -9,7 +9,7 @@ async fn main() {
     use creater_hub_temp::app::root::App;
     use creater_hub_temp::app::shell::shell;
     use creater_hub_temp::server::db::connect_db::connect_to_db;
-    use creater_hub_temp::server::db::init_db::InitDB;
+    use creater_hub_temp::server::db::init_db::init_DB;
     use creater_hub_temp::app::app_state::{self, AppState};
     use std::sync::Arc;
 
@@ -21,7 +21,7 @@ async fn main() {
 
     let db=connect_to_db().await.unwrap();
     let arc_db=Arc::new(db);
-    InitDB(arc_db.clone()).await;
+    init_DB(arc_db.clone()).await;
     let app_state=AppState{leptos_options,db:arc_db};
 
     let app = Router::new()

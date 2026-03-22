@@ -10,7 +10,7 @@ async fn main() {
     use creater_hub_temp::app::shell::shell;
     use creater_hub_temp::server::db::connect_db::connect_to_db;
     use creater_hub_temp::app::app_state::{self, AppState};
-    //use leptos_router::location::State;
+    use std::sync::Arc;
 
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
@@ -19,7 +19,8 @@ async fn main() {
     let routes = generate_route_list(App);
 
     let db=connect_to_db().await.unwrap();
-    let app_state=AppState{leptos_options,db};
+    let arc_db=Arc::new(db);
+    let app_state=AppState{leptos_options,db:arc_db};
 
     let app = Router::new()
         .leptos_routes_with_context(&app_state, routes, 

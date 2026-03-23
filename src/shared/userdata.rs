@@ -1,13 +1,13 @@
-use serde::{Serialize,Deserialize};
+use surrealdb_types::SurrealValue;
 
-#[derive(Serialize,Deserialize)]
+#[derive(SurrealValue)]
 pub struct UserInitData{
     name:String,
     google_id:String,
     email:String,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(SurrealValue)]
 pub struct UserFullData{
     name:String,
     google_id:String,

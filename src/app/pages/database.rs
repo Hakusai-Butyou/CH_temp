@@ -4,18 +4,26 @@ use leptos_router::components::A;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Client;
 use std::sync::Arc;
+use redis;
 /// Renders the home page of your application.
 #[component]
 pub fn DBPage() -> impl IntoView {
     // Creates a reactive value to update the button
-    let mut text=String::from_str("");
+    let text_db;
     match use_context::<Arc<Surreal<Client>>>() {
-        Some(_v) => text=String::from_str("接続済み"),
-        None => text=String::from_str("未接続"),
+        Some(_v) => text_db=String::from_str("接続済み").unwrap(),
+        None => text_db=String::from_str("未接続").unwrap(),
+    }
+    let text_redis;
+    match use_context::<Arc<redis::Client>>() {
+        Some(_v) => text_redis=String::from_str("接続済み").unwrap(),
+        None => text_redis=String::from_str("未接続").unwrap(),
     }
     view! {
         <h1>"データベース情報"</h1>
-        <h1>{text}</h1>
+        <h3>{text_db}</h3>
+        <h1>"セッションストア情報"</h1>
+        <h3>{text_redis}</h3>
         <A href="/">"戻る"</A> //仮
     }
 }

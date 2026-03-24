@@ -10,6 +10,7 @@ async fn main() {
     use creater_hub_temp::app::shell::shell;
     use creater_hub_temp::server::db::connect_db::connect_to_db;
     use creater_hub_temp::server::db::init_db::init_DB;
+    use creater_hub_temp::server::session::init_redis::create_redis_client;
     use creater_hub_temp::app::app_state::{self, AppState};
     use std::sync::Arc;
 
@@ -18,18 +19,21 @@ async fn main() {
     let leptos_options = conf.leptos_options;
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
-
+    let redis=create_redis_client().await;
+    let arc_redis=Arc::new(redis);
     let db=connect_to_db().await.unwrap();
     let arc_db=Arc::new(db);
     init_DB(arc_db.clone()).await;
-    let app_state=AppState{leptos_options,db:arc_db};
+    let app_state=AppState{leptos_options,db:arc_db,redis:arc_redis};
 
     let app = Router::new()
         .leptos_routes_with_context(&app_state, routes, 
             {
+                let redis_clone=app_state.redis.clone();
                 let db_clone=app_state.db.clone();
                 move || {
                     provide_context(db_clone.clone());
+                    provide_context(redis_clone.clone());
                 }
             }
             ,{

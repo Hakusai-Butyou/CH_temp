@@ -24,5 +24,6 @@ COPY ./public ./public
 COPY ./migrations ./migrations
 COPY ./style ./style
 COPY ./src ./src
+COPY ./build.rs ./build.rs
 
 CMD ["cargo", "leptos", "watch"]

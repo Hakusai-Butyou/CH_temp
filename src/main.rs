@@ -19,14 +19,17 @@ async fn main() {
     let leptos_options = conf.leptos_options;
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
+    
     let redis=create_redis_client().await;
     let arc_redis=Arc::new(redis);
+    
     let db=connect_to_db().await.unwrap();
     let arc_db=Arc::new(db);
     init_DB(arc_db.clone()).await;
     let app_state=AppState{leptos_options,db:arc_db,redis:arc_redis};
 
     let app = Router::new()
+        .route("/auth/{*fn_name}", get(handle_server_fns).post(handle_server_fns))
         .leptos_routes_with_context(&app_state, routes, 
             {
                 let redis_clone=app_state.redis.clone();

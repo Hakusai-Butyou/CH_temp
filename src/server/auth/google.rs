@@ -3,7 +3,10 @@ use leptos::server_fn::{ServerFnError,codec};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use crate::server::db::create_user::create_user;
+use crate::shared::userdata::UserInitData;
 use serde::Deserialize;
+use crate::server::session::register_session::register_session;
 
 #[derive(Deserialize, Debug)]
 pub struct Header{
@@ -44,16 +47,31 @@ pub fn decode_google_id_token(token: &str) -> (Header,Payload) {
     let payload:Payload=serde_json::from_slice(&decoded_payload).unwrap();
     (header,payload)
 }
-#[derive(serde::Deserialize,serde::Serialize,Debug,Clone)]
-pub struct GoogleLoginInput {
-    pub credential: String,
+pub fn create_user_init_data(payload:Payload) -> UserInitData {
+    UserInitData{
+        name:payload.name,
+        google_id:payload.sub,
+        email:payload.email
+    }
 }
 
 #[server(name=GoogleAuth, prefix="/auth", endpoint="google", input=codec::Json)]
-pub async fn google(credential:String) -> Result<(),ServerFnError> {
-    println!("{}",credential);
-    let (decoded_header,decoded_payload)=decode_google_id_token(&credential);
-    println!("header : {}", String::from_utf8(decoded_header).unwrap());
-    println!("payload : {}", String::from_utf8(decoded_payload).unwrap());
-    Ok(())
+pub async fn google(credential:String) -> Result<String,ServerFnError> {
+    let (header,payload)=decode_google_id_token(&credential);
+    let res=create_user(create_user_init_data(payload)).await;
+    if res.is_ok(){
+        if let Some(record_id)=res.unwrap(){
+            let reg_session_res=register_session(record_id).await;
+            if reg_session_res.is_ok() {
+                let session_id=reg_session_res.unwrap();
+                Ok(session_id)
+            } else {
+                reg_session_res
+            }
+        } else {
+            Err(ServerFnError::new("Responce of register_session is None."))
+        }
+    } else {
+        Err(ServerFnError::new("cannot make user."))
+    }
 }

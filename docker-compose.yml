@@ -28,6 +28,20 @@ services:
       - "8000:8000"
     volumes:
       - surreal_data:/data
+  redis:
+    image:
+      redis:latest
+    command:
+     - redis-server
+     - /usr/local/etc/redis.conf
+     - --requirepass
+     - ${REDIS_PASS}
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis.conf
+    environment:
+      - REDIS_PASS=${REDIS_PASS}
+    ports:
+      - "6379:6379"
 volumes:
   surreal_data: # ボリュームの定義
   cargo-registry: # 外部ボリュームとして作成

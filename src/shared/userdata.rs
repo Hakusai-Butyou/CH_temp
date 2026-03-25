@@ -1,15 +1,15 @@
 use surrealdb_types::SurrealValue;
 
-#[derive(SurrealValue)]
+#[derive(SurrealValue,Debug)]
 pub struct UserInitData{
-    name:String,
-    google_id:String,
-    email:String,
+    pub name:String,
+    pub google_id:String,
+    pub email:String,
 }
 
-#[derive(SurrealValue)]
+#[derive(SurrealValue,Debug)]
 pub struct UserFullData{
-    name:String,
-    google_id:String,
-    email:String,
+    pub name:String,
+    pub google_id:String,
+    pub email:String,
 }

@@ -27,7 +27,9 @@ async fn main() {
     let db=connect_to_db().await.unwrap();
     let arc_db=Arc::new(db);
     init_DB(arc_db.clone()).await;
-    let app_state=AppState{leptos_options,db:arc_db,redis:arc_redis};
+
+    let app_meta_data=Arc::new(get_app_meta_data());
+    let app_state=AppState{leptos_options,db:arc_db,redis:arc_redis,app_meta_data};
 
     let app = Router::new()
         .route("/auth/{*fn_name}", get(handle_server_fns).post(handle_server_fns))
@@ -35,9 +37,11 @@ async fn main() {
             {
                 let redis_clone=app_state.redis.clone();
                 let db_clone=app_state.db.clone();
+                let app_meta_data_clone=app_state.app_meta_data.clone();
                 move || {
                     provide_context(db_clone.clone());
                     provide_context(redis_clone.clone());
+                    provide_context(app_meta_data_clone.clone());
                 }
             }
             ,{

@@ -3,6 +3,7 @@
 #[tokio::main]
 async fn main() {
     use axum::Router;
+    use axum::routing::get;
     use leptos::logging::log;
     use leptos::prelude::{provide_context, *};
     use leptos_axum::{generate_route_list, handle_server_fns, LeptosRoutes};

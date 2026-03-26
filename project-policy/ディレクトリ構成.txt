@@ -1,0 +1,29 @@
+.
+├── project-policy/         # 開発する上での計画や規則
+├── .devcontainer/          # WSL2 + VS Codeでの開発環境定義
+├── docker/                 # Docker関連設定
+│   ├── app/                # Leptos実行環境
+│   └── surrealdb/          # SurrealDB設定・データ永続化
+├── migrations/             # SurrealDBのスキーマ・初期データ (.surql)
+├── public/                 # 静的ファイル（アイコン・画像など）
+│   └── script/             # .jsファイル
+├── src/
+│   ├── api/                # 外部API連携 (YouTube, SNS等)
+│   ├── app/                # Leptos共通ロジック・ルーティング
+│   │   ├── components/     # UIコンポーネント
+│   │   └── pages/          # 各画面（プロフィール、検索、管理画面等）
+│   ├── models/             # データ構造（Frontend/Backend共通） 
+│   ├── server/             # サーバーサイド専用処理
+│   │   ├── db/             # SurrealDB操作ロジック
+│   │   ├── ai/             # ベクトル検索・RAG・分析
+│   │   ├─── auth/          # OAuth認証関連
+│   │   │    └─── google.rs          # Google Auth連携
+│   │   └─── session/       # セッション管理/redis関連
+│   ├── utils/              # 共通ユーティリティ
+│   ├── main.rs             # サーバーエントリーポイント
+│   └── lib.rs              # Leptosフロントエンド/共通ライブラリ
+├── Cargo.toml
+├── .env                    # パスワードやclient_idなど
+├── docker-compose.yml      # アプリとDBの統合
+├── redis.conf              # redisの設定ファイル
+└── README.md

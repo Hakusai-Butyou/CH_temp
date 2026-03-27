@@ -15,7 +15,7 @@ pub fn DBPage() -> impl IntoView {
         Some(_v) => text_db=String::from_str("接続済み").unwrap(),
         None => text_db=String::from_str("未接続").unwrap(),
     }
-    let mut text_redis;
+    let text_redis;
     #[cfg(feature = "ssr")]
     {
         match use_context::<Arc<redis::Client>>() {

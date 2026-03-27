@@ -10,7 +10,7 @@ async fn main() {
     use creater_hub_temp::app::root::App;
     use creater_hub_temp::app::shell::shell;
     use creater_hub_temp::server::db::connect_db::connect_to_db;
-    use creater_hub_temp::server::db::init_db::init_DB;
+    use creater_hub_temp::server::db::init_db::init_db;
     use creater_hub_temp::server::session::init_redis::create_redis_client;
     use creater_hub_temp::app::app_state::{AppState ,get_app_meta_data};
     use std::sync::Arc;
@@ -26,7 +26,7 @@ async fn main() {
     
     let db=connect_to_db().await.unwrap();
     let arc_db=Arc::new(db);
-    init_DB(arc_db.clone()).await;
+    init_db(arc_db.clone()).await;
 
     let app_meta_data=Arc::new(get_app_meta_data());
     let app_state=AppState{leptos_options,db:arc_db,redis:arc_redis,app_meta_data};

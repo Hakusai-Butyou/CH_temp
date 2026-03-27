@@ -2,17 +2,11 @@ use leptos::prelude::*;
 use leptos::server_fn::{ServerFnError,codec};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use crate::server::db::create_user::create_user;
 use crate::shared::userdata::UserInitData;
 use serde::Deserialize;
-use crate::server::session::register_session::register_session;
 use serde;
-use once_cell::sync::Lazy;
-use reqwest::Client;
-use std::sync::Arc;
-use ring::signature;
 use std::time::{UNIX_EPOCH,SystemTime};
-
+use reqwest::Client;
 #[derive(Deserialize, Debug)]
 pub struct Header{
     pub alg:String,
@@ -85,6 +79,10 @@ impl JwksCache {
 #[cfg(feature = "ssr")]
 use tokio::sync::RwLock;
 #[cfg(feature = "ssr")]
+use once_cell::sync::Lazy;
+#[cfg(feature = "ssr")]
+use std::sync::Arc;
+#[cfg(feature = "ssr")]
 pub static JWKS_CACHE: Lazy<Arc<RwLock<JwksCache>>> =
     Lazy::new(|| Arc::new(RwLock::new(JwksCache::empty())));
 
@@ -105,7 +103,7 @@ pub async fn fetch_jwks() -> Result<(Jwks,Vec<String>),ServerFnError> {
     Ok((jwks,kids))
 }
 
-pub async fn verify_id_token(header:&Header,payload:&Payload,devided_raw_jwt:&Vec<&str>) -> Result<(),ServerFnError> {
+pub fn verify_id_token(header:&Header,payload:&Payload) -> Result<(),ServerFnError> {
     if header.alg != "RS256" {
         return Err(ServerFnError::new("'alg' is invalid."));
     }
@@ -122,35 +120,38 @@ pub async fn verify_id_token(header:&Header,payload:&Payload,devided_raw_jwt:&Ve
     if payload.email_verified == false {
         return Err(ServerFnError::new("This email address is not verified."));
     }
-    #[cfg(feature = "ssr")]
-    {
-        let jwks_cache = JWKS_CACHE.clone();
-        let mut jwk_cache_lock=jwks_cache.write().await;
-        let jwk=jwk_cache_lock.get_key(header.kid.clone()).await?;
-        let signed_data = format!("{}.{}", devided_raw_jwt[0], devided_raw_jwt[1]);
-        let signature_bytes =        URL_SAFE_NO_PAD.decode(devided_raw_jwt[2]).map_err(|_| "invalid signature b64").unwrap();
-        let n = URL_SAFE_NO_PAD.decode(jwk.n.clone()).map_err(|_| "invalid n").unwrap();
-        let e = URL_SAFE_NO_PAD.decode(jwk.e.clone()).map_err(|_| "invalid e").unwrap();
-        let public_key_der = signature::RsaPublicKeyComponents {
-            n: &n,
-            e: &e,
-        };
-        let verification_result=public_key_der
-            .verify(
-                &signature::RSA_PKCS1_2048_8192_SHA256,
-                signed_data.as_bytes(),
-                &signature_bytes,
-            )
-            .map_err(|_| "signature verification failed");
-        if verification_result.is_ok(){
-            Ok(())
-        } else {
-            Err(ServerFnError::new("signature varification failed."))
-        }
-    }
-    #[cfg(not(feature = "ssr"))]
-    Err(ServerFnError::new("csr mode."))
+    Ok(())
 }
+
+#[cfg(feature = "ssr")]
+pub async fn verify_signature(kid:String,devided_raw_jwt:&Vec<&str>) -> Result<(),ServerFnError> {
+    use ring::signature;
+
+    let jwks_cache = JWKS_CACHE.clone();
+    let mut jwk_cache_lock=jwks_cache.write().await;
+    let jwk=jwk_cache_lock.get_key(kid).await?;
+    let signed_data = format!("{}.{}", devided_raw_jwt[0], devided_raw_jwt[1]);
+    let signature_bytes =        URL_SAFE_NO_PAD.decode(devided_raw_jwt[2]).map_err(|_| "invalid signature b64").unwrap();
+    let n = URL_SAFE_NO_PAD.decode(jwk.n.clone()).map_err(|_| "invalid n").unwrap();
+    let e = URL_SAFE_NO_PAD.decode(jwk.e.clone()).map_err(|_| "invalid e").unwrap();
+    let public_key_der = signature::RsaPublicKeyComponents {
+        n: &n,
+        e: &e,
+    };
+    let verification_result=public_key_der
+        .verify(
+            &signature::RSA_PKCS1_2048_8192_SHA256,
+            signed_data.as_bytes(),
+            &signature_bytes,
+        )
+        .map_err(|_| "signature verification failed");
+    if verification_result.is_ok(){
+        Ok(())
+    } else {
+        Err(ServerFnError::new("signature varification failed."))
+    }
+}
+
 /// Google の ID Token の payload を JSON に変換する
 pub fn decode_google_id_token(token: &str) -> (Header,Payload,Vec<&str>) {
     let devided_raw_jwt: Vec<&str> = token.split('.').collect();
@@ -177,10 +178,17 @@ pub fn create_user_init_data(payload:Payload) -> UserInitData {
 
 #[server(name=GoogleAuth, prefix="/auth", endpoint="google", input=codec::Json)]
 pub async fn google(credential:String) -> Result<String,ServerFnError> {
+    use crate::server::session::register_session::register_session;
+    use crate::server::db::create_user::create_user;
+
     let (header,payload,devided_raw_jwt)=decode_google_id_token(&credential);
-    let verify_result=verify_id_token(&header, &payload,&devided_raw_jwt).await;
-    if verify_result.is_err() {
-        return Err(verify_result.err().unwrap());
+    let verify_id_token_result=verify_id_token(&header, &payload);
+    if verify_id_token_result.is_err() {
+        return Err(verify_id_token_result.err().unwrap());
+    }
+    let verify_signature_result=verify_signature(header.kid.clone(), &devided_raw_jwt).await;
+    if verify_signature_result.is_err() {
+        return Err(verify_signature_result.err().unwrap());
     }
     let res=create_user(create_user_init_data(payload)).await;
     if res.is_ok(){

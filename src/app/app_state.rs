@@ -1,10 +1,15 @@
-use leptos::config::LeptosOptions;
-use surrealdb::Surreal;
+use std::env::var;
+
+#[cfg(feature = "ssr")]
 use surrealdb::engine::remote::ws::Client;
 #[cfg(feature = "ssr")]
+use leptos::config::LeptosOptions;
+#[cfg(feature = "ssr")]
+use surrealdb::Surreal;
+#[cfg(feature = "ssr")]
 use redis;
+#[cfg(feature = "ssr")]
 use std::sync::Arc;
-use std::env::var;
 #[derive(Clone)]
 #[cfg(feature = "ssr")]
 pub struct AppState{

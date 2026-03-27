@@ -83,10 +83,10 @@ impl JwksCache {
     }
 }
 /// Google の ID Token の payload を JSON に変換する（署名検証なし）
-pub fn decode_google_id_token(token: &str) -> (Header,Payload) {
-    let parts: Vec<&str> = token.split('.').collect();
-    let header_b64 = parts[0];
-    let payload_b64 = parts[1];
+pub fn decode_google_id_token(token: &str) -> (Header,Payload,Vec<&str>) {
+    let devided_raw_jwt: Vec<&str> = token.split('.').collect();
+    let header_b64 = devided_raw_jwt[0];
+    let payload_b64 = devided_raw_jwt[1];
 
     let decoded_header = URL_SAFE_NO_PAD
         .decode(header_b64)
@@ -96,7 +96,7 @@ pub fn decode_google_id_token(token: &str) -> (Header,Payload) {
         .expect("Base64 decode failed");
     let header:Header=serde_json::from_slice(&decoded_header).unwrap();
     let payload:Payload=serde_json::from_slice(&decoded_payload).unwrap();
-    (header,payload)
+    (header,payload,devided_raw_jwt)
 }
 pub fn create_user_init_data(payload:Payload) -> UserInitData {
     UserInitData{
@@ -108,7 +108,7 @@ pub fn create_user_init_data(payload:Payload) -> UserInitData {
 
 #[server(name=GoogleAuth, prefix="/auth", endpoint="google", input=codec::Json)]
 pub async fn google(credential:String) -> Result<String,ServerFnError> {
-    let (header,payload)=decode_google_id_token(&credential);
+    let (header,payload,devided_raw_jwt)=decode_google_id_token(&credential);
     let res=create_user(create_user_init_data(payload)).await;
     if res.is_ok(){
         if let Some(record_id)=res.unwrap(){

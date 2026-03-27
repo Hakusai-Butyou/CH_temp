@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos::server_fn::{ServerFnError,codec};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use crate::shared::userdata::UserInitData;
+use crate::shared::account_data::BasicAccountData;
 use serde::Deserialize;
 use serde;
 use std::time::{UNIX_EPOCH,SystemTime};
@@ -168,8 +168,8 @@ pub fn decode_google_id_token(token: &str) -> (Header,Payload,Vec<&str>) {
     let payload:Payload=serde_json::from_slice(&decoded_payload).unwrap();
     (header,payload,devided_raw_jwt)
 }
-pub fn create_user_init_data(payload:Payload) -> UserInitData {
-    UserInitData{
+pub fn create_user_init_data(payload:Payload) -> BasicAccountData {
+    BasicAccountData{
         name:payload.name,
         google_id:payload.sub,
         email:payload.email
@@ -179,7 +179,7 @@ pub fn create_user_init_data(payload:Payload) -> UserInitData {
 #[server(name=GoogleAuth, prefix="/auth", endpoint="google", input=codec::Json)]
 pub async fn google(credential:String) -> Result<String,ServerFnError> {
     use crate::server::session::register_session::register_session;
-    use crate::server::db::create_user::create_user;
+    use crate::server::db::account::create_account::create_account;
 
     let (header,payload,devided_raw_jwt)=decode_google_id_token(&credential);
     let verify_id_token_result=verify_id_token(&header, &payload);
@@ -190,7 +190,7 @@ pub async fn google(credential:String) -> Result<String,ServerFnError> {
     if verify_signature_result.is_err() {
         return Err(verify_signature_result.err().unwrap());
     }
-    let res=create_user(create_user_init_data(payload)).await;
+    let res=create_account(create_user_init_data(payload)).await;
     if res.is_ok(){
         if let Some(record_id)=res.unwrap(){
             let reg_session_res=register_session(record_id).await;

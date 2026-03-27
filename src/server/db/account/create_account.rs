@@ -2,14 +2,14 @@ use leptos::prelude::*;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::Client;
 use std::sync::Arc;
-use crate::shared::userdata::{UserInitData};
+use crate::shared::account_data::{BasicAccountData};
 use surrealdb::Error;
 use surrealdb_types::RecordId;
 
-pub async fn create_user(user_init_data:UserInitData) -> Result<Option<RecordId>, Error>{
+pub async fn create_account(basic_account_data:BasicAccountData) -> Result<Option<RecordId>, Error>{
     let db=use_context::<Arc<Surreal<Client>>>().unwrap();
     
     let record_id:Result<Option<RecordId>,Error>=db.create("Account")
-    .content(user_init_data).await;
+    .content(basic_account_data).await;
     record_id
 }

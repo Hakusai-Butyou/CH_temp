@@ -82,7 +82,76 @@ impl JwksCache {
         }
     }
 }
-/// Google の ID Token の payload を JSON に変換する（署名検証なし）
+#[cfg(feature = "ssr")]
+use tokio::sync::RwLock;
+#[cfg(feature = "ssr")]
+pub static JWKS_CACHE: Lazy<Arc<RwLock<JwksCache>>> =
+    Lazy::new(|| Arc::new(RwLock::new(JwksCache::empty())));
+
+//jwks:Json Web Key Set
+pub async fn fetch_jwks() -> Result<(Jwks,Vec<String>),ServerFnError> {
+    let url = "https://www.googleapis.com/oauth2/v3/certs";
+    
+    let jwks = Client::new()
+        .get(url)
+        .send()
+        .await?
+        .json::<Jwks>()
+        .await?;
+    let kids=jwks.keys
+                      .iter()
+                      .map(move |x| x.kid.clone())
+                      .collect();
+    Ok((jwks,kids))
+}
+
+pub async fn verify_id_token(header:&Header,payload:&Payload,devided_raw_jwt:&Vec<&str>) -> Result<(),ServerFnError> {
+    if header.alg != "RS256" {
+        return Err(ServerFnError::new("'alg' is invalid."));
+    }
+    if payload.aud != env!("CLIENT_ID") {
+        return Err(ServerFnError::new("'client_id' is invalid."));
+    }
+    if !(payload.iss == "accounts.google.com" || payload.iss == "https://accounts.google.com") {
+        return Err(ServerFnError::new("'iss' is invalid."));
+    }
+    let current_time=SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+    if current_time > payload.exp {
+        return Err(ServerFnError::new("This token is expired."));
+    }
+    if payload.email_verified == false {
+        return Err(ServerFnError::new("This email address is not verified."));
+    }
+    #[cfg(feature = "ssr")]
+    {
+        let jwks_cache = JWKS_CACHE.clone();
+        let mut jwk_cache_lock=jwks_cache.write().await;
+        let jwk=jwk_cache_lock.get_key(header.kid.clone()).await?;
+        let signed_data = format!("{}.{}", devided_raw_jwt[0], devided_raw_jwt[1]);
+        let signature_bytes =        URL_SAFE_NO_PAD.decode(devided_raw_jwt[2]).map_err(|_| "invalid signature b64").unwrap();
+        let n = URL_SAFE_NO_PAD.decode(jwk.n.clone()).map_err(|_| "invalid n").unwrap();
+        let e = URL_SAFE_NO_PAD.decode(jwk.e.clone()).map_err(|_| "invalid e").unwrap();
+        let public_key_der = signature::RsaPublicKeyComponents {
+            n: &n,
+            e: &e,
+        };
+        let verification_result=public_key_der
+            .verify(
+                &signature::RSA_PKCS1_2048_8192_SHA256,
+                signed_data.as_bytes(),
+                &signature_bytes,
+            )
+            .map_err(|_| "signature verification failed");
+        if verification_result.is_ok(){
+            Ok(())
+        } else {
+            Err(ServerFnError::new("signature varification failed."))
+        }
+    }
+    #[cfg(not(feature = "ssr"))]
+    Err(ServerFnError::new("csr mode."))
+}
+/// Google の ID Token の payload を JSON に変換する
 pub fn decode_google_id_token(token: &str) -> (Header,Payload,Vec<&str>) {
     let devided_raw_jwt: Vec<&str> = token.split('.').collect();
     let header_b64 = devided_raw_jwt[0];
@@ -109,6 +178,10 @@ pub fn create_user_init_data(payload:Payload) -> UserInitData {
 #[server(name=GoogleAuth, prefix="/auth", endpoint="google", input=codec::Json)]
 pub async fn google(credential:String) -> Result<String,ServerFnError> {
     let (header,payload,devided_raw_jwt)=decode_google_id_token(&credential);
+    let verify_result=verify_id_token(&header, &payload,&devided_raw_jwt).await;
+    if verify_result.is_err() {
+        return Err(verify_result.err().unwrap());
+    }
     let res=create_user(create_user_init_data(payload)).await;
     if res.is_ok(){
         if let Some(record_id)=res.unwrap(){

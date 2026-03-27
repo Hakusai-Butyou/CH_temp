@@ -1,6 +1,5 @@
 use leptos::prelude::*;
 use leptos::server_fn::{ServerFnError,codec};
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use crate::server::db::create_user::create_user;

@@ -6,6 +6,12 @@ use crate::server::db::create_user::create_user;
 use crate::shared::userdata::UserInitData;
 use serde::Deserialize;
 use crate::server::session::register_session::register_session;
+use serde;
+use once_cell::sync::Lazy;
+use reqwest::Client;
+use std::sync::Arc;
+use ring::signature;
+use std::time::{UNIX_EPOCH,SystemTime};
 
 #[derive(Deserialize, Debug)]
 pub struct Header{
@@ -30,6 +36,52 @@ pub struct Payload{
     pub jti:String
 }
 
+#[derive(Deserialize, Debug)]
+pub struct Jwk{
+    pub e:String,
+    pub alg:String,
+    pub n:String,
+    pub kty:String,
+    pub r#use:String,
+    pub kid:String,
+}
+#[derive(Deserialize, Debug)]
+pub struct Jwks{
+    pub keys:Vec<Jwk>
+}
+
+pub struct JwksCache{
+    pub jwks:Jwks,
+    pub kids:Vec<String>,
+} 
+impl JwksCache {
+    pub fn empty()->JwksCache{
+        let empty_jwks=Jwks{keys:Vec::<Jwk>::new()};
+        JwksCache{
+            jwks:empty_jwks,
+            kids:vec![],
+        }
+    }
+
+    pub async fn get_key(&mut self,kid:String) -> Result<&Jwk,ServerFnError> {
+        if let Some(key_num)
+               =self.kids.iter().position(|x| **x==kid){
+            let jwk=&self.jwks.keys[key_num];
+            Ok(jwk)
+        } else {
+            let (new_jwks,new_kids)=fetch_jwks().await?;
+            self.jwks=new_jwks;
+            self.kids=new_kids;
+            if let Some(key_num)
+               =self.kids.iter().position(|x| **x==kid){
+                let jwk=&self.jwks.keys[key_num];
+                Ok(jwk)
+            } else {
+                Err(ServerFnError::new("the jwk not found"))
+            }
+        }
+    }
+}
 /// Google の ID Token の payload を JSON に変換する（署名検証なし）
 pub fn decode_google_id_token(token: &str) -> (Header,Payload) {
     let parts: Vec<&str> = token.split('.').collect();

@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use leptos::server_fn::{ServerFnError,codec};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use surrealdb_types::RecordId;
 use crate::shared::account_data::BasicAccountData;
 use serde::Deserialize;
 use std::time::{UNIX_EPOCH,SystemTime};
@@ -179,6 +180,7 @@ pub fn create_user_init_data(payload:Payload) -> BasicAccountData {
 pub async fn google(credential:String) -> Result<String,ServerFnError> {
     use crate::server::session::register_session::register_session;
     use crate::server::db::account::create_account::create_account;
+    use crate::server::db::account::get_account_data::get_account_data_by_google_id;
 
     let (header,payload,devided_raw_jwt)=decode_google_id_token(&credential);
     let verify_id_token_result=verify_id_token(&header, &payload);
@@ -189,20 +191,28 @@ pub async fn google(credential:String) -> Result<String,ServerFnError> {
     if verify_signature_result.is_err() {
         return Err(verify_signature_result.err().unwrap());
     }
-    let res=create_account(create_user_init_data(payload)).await;
-    if res.is_ok(){
-        if let Some(record_id)=res.unwrap(){
-            let reg_session_res=register_session(record_id).await;
-            if reg_session_res.is_ok() {
-                let session_id=reg_session_res.unwrap();
-                Ok(session_id)
-            } else {
-                reg_session_res
-            }
-        } else {
-            Err(ServerFnError::new("Responce of register_session is None."))
+
+    let record_id:RecordId;
+    if let Some(user_data)=get_account_data_by_google_id(payload.sub.clone()).await?{
+        record_id=user_data.id.clone();
+    } else{
+        let res=create_account(create_user_init_data(payload)).await;
+        if res.is_err(){
+            return Err(ServerFnError::new("cannot make user."))
         }
+        if let Some(rec_id)=res.unwrap(){
+            record_id=rec_id
+        } else {
+            return Err(ServerFnError::new("Responce of register_session is None."))
+        }
+
+    }
+
+    let reg_session_res=register_session(record_id).await;
+    if reg_session_res.is_ok() {
+        let session_id=reg_session_res.unwrap();
+        Ok(session_id)
     } else {
-        Err(ServerFnError::new("cannot make user."))
+        reg_session_res
     }
 }
